@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CC Bingo — Claude Code Bingo</title>
+<meta name="description" content="How many of these have happened to you? Claude Code bingo card generator.">
+<meta property="og:title" content="CC Bingo — Claude Code Bingo">
+<meta property="og:description" content="How many of these have happened to you? Get your unique bingo card.">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg: #0f0f13;
+  --surface: #17171f;
+  --surface-2: #1f1f2e;
+  --purple: #a855f7;
+  --purple-dim: rgba(168, 85, 247, 0.12);
+  --gold: #fbbf24;
+  --green: #34d399;
+  --text: #e8e8ee;
+  --text-dim: #8888a0;
+  --text-faint: #555568;
+  --border: #2a2a3a;
+  --marked: rgba(168, 85, 247, 0.25);
+  --marked-border: rgba(168, 85, 247, 0.6);
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  min-height: 100vh;
+}
+
+.container {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem;
+}
+
+header {
+  text-align: center;
+  padding: 2rem 0 1.5rem;
+}
+
+header h1 {
+  font-size: 2rem;
+  font-weight: 900;
+}
+
+header h1 .hl { color: var(--purple); }
+
+header .tagline {
+  color: var(--text-dim);
+  font-size: 0.9rem;
+  margin-top: 0.3rem;
+}
+
+/* Bingo grid */
+.bingo-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 4px;
+  margin-bottom: 1.5rem;
+  user-select: none;
+}
+
+.bingo-header {
+  text-align: center;
+  font-weight: 900;
+  font-size: 1.5rem;
+  padding: 0.5rem 0;
+  color: var(--purple);
+  letter-spacing: 8px;
+}
+
+.bingo-cell {
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  padding: 0.5rem;
+  min-height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-size: 0.65rem;
+  line-height: 1.35;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.bingo-cell:hover {
+  border-color: var(--text-faint);
+  background: var(--surface-2);
+}
+
+.bingo-cell.marked {
+  background: var(--marked);
+  border-color: var(--marked-border);
+}
+
+.bingo-cell.marked::after {
+  content: '✓';
+  position: absolute;
+  top: 3px;
+  right: 5px;
+  font-size: 0.7rem;
+  color: var(--purple);
+  font-weight: 900;
+}
+
+.bingo-cell.free {
+  background: var(--purple-dim);
+  border-color: var(--marked-border);
+  font-weight: 700;
+  color: var(--gold);
+  font-size: 0.7rem;
+}
+
+.bingo-cell.bingo-win {
+  animation: winPulse 0.6s ease;
+  border-color: var(--gold);
+  box-shadow: 0 0 12px rgba(251, 191, 36, 0.3);
+}
+
+@keyframes winPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+/* Bingo alert */
+.bingo-alert {
+  display: none;
+  text-align: center;
+  padding: 1.5rem;
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.15), rgba(251, 191, 36, 0.15));
+  border: 2px solid var(--gold);
+  border-radius: 12px;
+  margin-bottom: 1.5rem;
+}
+
+.bingo-alert.show { display: block; animation: fadeIn 0.3s ease; }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.bingo-alert .ba-icon { font-size: 2rem; margin-bottom: 0.3rem; }
+.bingo-alert .ba-title { font-size: 1.2rem; font-weight: 900; color: var(--gold); }
+.bingo-alert .ba-sub { font-size: 0.85rem; color: var(--text-dim); margin-top: 0.2rem; }
+
+/* Counter */
+.counter-row {
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.counter-item { text-align: center; }
+.counter-item .ci-val { font-size: 1.8rem; font-weight: 900; font-family: 'SF Mono', monospace; }
+.counter-item .ci-lbl { font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; }
+
+/* Actions */
+.actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 2rem;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.5rem 1rem;
+  border-radius: 50px;
+  border: none;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+
+.btn:hover { transform: translateY(-1px); }
+.btn-twitter { background: #1d9bf0; color: white; }
+.btn-copy { background: var(--surface-2); color: var(--text); }
+.btn-new { background: var(--purple); color: white; }
+.btn-reset { background: transparent; color: var(--text-dim); border: 1px solid var(--border); }
+
+.footer {
+  text-align: center;
+  padding: 1.5rem 0;
+  color: var(--text-faint);
+  font-size: 0.7rem;
+}
+
+.footer a { color: var(--purple); text-decoration: none; }
+.footer a:hover { text-decoration: underline; }
+
+@media (max-width: 500px) {
+  .bingo-cell { min-height: 65px; font-size: 0.58rem; padding: 0.35rem; }
+  .bingo-header { font-size: 1.2rem; letter-spacing: 5px; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+  <h1>CC <span class="hl">Bingo</span></h1>
+  <p class="tagline">How many of these have happened to you?</p>
+</header>
+
+<div class="bingo-header">BINGO</div>
+<div class="bingo-grid" id="grid"></div>
+
+<div class="bingo-alert" id="bingo-alert">
+  <div class="ba-icon">🎉</div>
+  <div class="ba-title">BINGO!</div>
+  <div class="ba-sub" id="bingo-msg">You've experienced the full Claude Code journey.</div>
+</div>
+
+<div class="counter-row">
+  <div class="counter-item">
+    <div class="ci-val" id="marked-count">1</div>
+    <div class="ci-lbl">Marked</div>
+  </div>
+  <div class="counter-item">
+    <div class="ci-val" id="bingo-count">0</div>
+    <div class="ci-lbl">Bingos</div>
+  </div>
+</div>
+
+<div class="actions">
+  <button class="btn btn-twitter" onclick="shareTwitter()">Share on X</button>
+  <button class="btn btn-copy" onclick="copyResult()">Copy Result</button>
+  <button class="btn btn-new" onclick="newCard()">New Card</button>
+  <button class="btn btn-reset" onclick="resetCard()">Reset Marks</button>
+</div>
+
+<div class="footer">
+  Part of the <a href="https://yurukusa.github.io/">yurukusa</a> ecosystem &mdash;
+  <a href="https://yurukusa.github.io/cc-roast/">CC Roast</a> &middot;
+  <a href="https://yurukusa.github.io/cc-wrapped/">CC Wrapped</a> &middot;
+  <a href="https://yurukusa.github.io/cc-health-check/">Health Check</a>
+</div>
+
+</div>
+
+<script>
+const ITEMS = [
+  "AI suggests deleting a file you need",
+  "Context window runs out mid-task",
+  "AI refactors code you didn't ask about",
+  "Pre-commit hook saves the day",
+  "AI writes a test that tests nothing",
+  "git push --force attempt blocked",
+  "AI hallucinates an API endpoint",
+  "CLAUDE.md exceeds 200 lines",
+  "AI creates a file named temp.js",
+  "Session costs more than your lunch",
+  "AI apologizes for something it didn't do",
+  "You say 'be concise', AI writes 500 lines",
+  "AI asks 'shall I continue?' (obviously yes)",
+  "AI fixes a bug, introduces two new ones",
+  "You understand less after AI explains it",
+  "AI suggests pip install for a Node project",
+  "AI rewrites your function 'for clarity'",
+  "MCP server connection fails",
+  "AI recommends a deprecated package",
+  "You approve a tool call without reading it",
+  "AI makes the same mistake twice in a row",
+  "AI writes docs when you needed code",
+  "/compact triggers at the worst moment",
+  "AI re-reads a file it read 3 messages ago",
+  "Subagent forgets the original question",
+  "AI creates a backup of a backup",
+  "AI's 'fix' is your original code",
+  "AI starts answering before you finish",
+  "Hook blocks a perfectly safe command",
+  "AI generates a 1000-line function",
+  "AI says 'I'll be brief' then writes a novel",
+  "AI commits with message 'fix'",
+  "AI tries to read a file that doesn't exist",
+  "You lose track of which branch you're on",
+  "AI edits the wrong file",
+  "Token usage spikes at 3 AM",
+  "AI adds comments to every single line",
+  "AI creates a helper function used exactly once",
+  "AI imports a library for one function",
+  "AI says 'let me check' then checks nothing",
+  "You forget what you asked AI to do",
+  "AI creates an abstraction for 3 lines of code",
+  "AI puts TODO in code and never comes back",
+  "AI solves a different problem than asked",
+  "You spend more time reviewing than coding",
+  "AI output perfectly matches Stack Overflow",
+  "Pre-commit hook fails on AI-generated code",
+  "AI suggests installing a package it already installed",
+  "Your .env file almost gets committed",
+  "AI writes TypeScript types for a JavaScript project"
+];
+
+const BINGO_MSGS = [
+  "You've seen it all. Veteran status unlocked.",
+  "The full Claude Code experience. No refunds.",
+  "You didn't just use AI. AI used you.",
+  "This is what $200/month looks like.",
+  "Achievement unlocked: Survived the AI revolution.",
+  "You're not a user anymore. You're a survivor."
+];
+
+let cells = [];
+let markedSet = new Set([12]); // Center (FREE) always marked
+let bingoLines = 0;
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function generateCard() {
+  const picked = shuffle(ITEMS).slice(0, 24);
+  cells = [];
+  for (let i = 0; i < 25; i++) {
+    if (i === 12) {
+      cells.push({ text: '★ FREE ★\nAI is actually helpful', free: true });
+    } else {
+      const idx = i < 12 ? i : i - 1;
+      cells.push({ text: picked[idx], free: false });
+    }
+  }
+}
+
+function renderGrid() {
+  const grid = document.getElementById('grid');
+  grid.innerHTML = '';
+  cells.forEach((cell, i) => {
+    const div = document.createElement('div');
+    div.className = 'bingo-cell' + (cell.free ? ' free marked' : '') + (markedSet.has(i) && !cell.free ? ' marked' : '');
+    div.textContent = cell.text;
+    if (!cell.free) {
+      div.onclick = () => toggleCell(i, div);
+    }
+    grid.appendChild(div);
+  });
+  updateCounters();
+}
+
+function toggleCell(i, div) {
+  if (markedSet.has(i)) {
+    markedSet.delete(i);
+    div.classList.remove('marked');
+  } else {
+    markedSet.add(i);
+    div.classList.add('marked');
+  }
+  updateCounters();
+  checkBingo();
+}
+
+function updateCounters() {
+  document.getElementById('marked-count').textContent = markedSet.size;
+}
+
+function checkBingo() {
+  const lines = [];
+  // Rows
+  for (let r = 0; r < 5; r++) {
+    const row = [];
+    for (let c = 0; c < 5; c++) row.push(r * 5 + c);
+    lines.push(row);
+  }
+  // Columns
+  for (let c = 0; c < 5; c++) {
+    const col = [];
+    for (let r = 0; r < 5; r++) col.push(r * 5 + c);
+    lines.push(col);
+  }
+  // Diagonals
+  lines.push([0, 6, 12, 18, 24]);
+  lines.push([4, 8, 12, 16, 20]);
+
+  let count = 0;
+  const winCells = new Set();
+  lines.forEach(line => {
+    if (line.every(i => markedSet.has(i))) {
+      count++;
+      line.forEach(i => winCells.add(i));
+    }
+  });
+
+  // Highlight winning cells
+  const allCells = document.querySelectorAll('.bingo-cell');
+  allCells.forEach((cell, i) => {
+    cell.classList.toggle('bingo-win', winCells.has(i));
+  });
+
+  bingoLines = count;
+  document.getElementById('bingo-count').textContent = count;
+
+  const alert = document.getElementById('bingo-alert');
+  if (count > 0) {
+    alert.classList.add('show');
+    document.getElementById('bingo-msg').textContent = BINGO_MSGS[Math.floor(Math.random() * BINGO_MSGS.length)];
+  } else {
+    alert.classList.remove('show');
+  }
+}
+
+function shareTwitter() {
+  const text = 'CC Bingo: ' + markedSet.size + '/25 marked, ' + bingoLines + ' bingo' + (bingoLines !== 1 ? 's' : '') + '!\n\n' +
+    'How many Claude Code moments have YOU experienced?\n\nGet your card:';
+  const url = 'https://yurukusa.github.io/cc-bingo/';
+  window.open('https://twitter.com/intent/tweet?text=' + encodeURIComponent(text) + '&url=' + encodeURIComponent(url), '_blank');
+}
+
+function copyResult() {
+  const marked = [];
+  markedSet.forEach(i => {
+    if (i !== 12) marked.push('✓ ' + cells[i].text);
+  });
+  const text = 'CC Bingo Result\n' +
+    markedSet.size + '/25 marked | ' + bingoLines + ' bingo(s)\n\n' +
+    marked.join('\n') + '\n\n' +
+    'https://yurukusa.github.io/cc-bingo/';
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.querySelector('.btn-copy');
+    const orig = btn.textContent;
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = orig, 1500);
+  });
+}
+
+function newCard() {
+  markedSet = new Set([12]);
+  bingoLines = 0;
+  generateCard();
+  renderGrid();
+  document.getElementById('bingo-alert').classList.remove('show');
+}
+
+function resetCard() {
+  markedSet = new Set([12]);
+  bingoLines = 0;
+  renderGrid();
+  document.getElementById('bingo-alert').classList.remove('show');
+  document.getElementById('bingo-count').textContent = '0';
+}
+
+// Init
+generateCard();
+renderGrid();
+</script>
+</body>
+</html>
